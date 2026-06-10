@@ -1,10 +1,14 @@
-# CLAUDE.md — Working agreement for AI-assisted development
+# CLAUDE.md
 
-This file tells Claude Code how to work in this repo autonomously. Read PROJECT.md for the vision and TODO.md for what to build next.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project overview
+
+Multi-agent SRE incident diagnosis copilot. A LangGraph supervisor orchestrates three specialist agents (Log Analyst, Metrics Analyst, Runbook Executor) that investigate simulated cloud incidents through MCP mock servers, protected by production guardrails. Read PROJECT.md for the vision and TODO.md for the phased backlog (steps are ordered — do not skip ahead).
 
 ## Workflow
 
-1. Open TODO.md and pick the first unchecked step (steps are ordered; do not skip ahead).
+1. Open TODO.md and pick the first unchecked step.
 2. Read the relevant docs/ page before coding (architecture.md, agents.md, guardrails.md, evals.md).
 3. Implement in small increments: code + tests together, never code without tests.
 4. Run `make check` — it must be fully green before the step is considered done.
@@ -22,6 +26,10 @@ This file tells Claude Code how to work in this repo autonomously. Read PROJECT.
 | `make test` / `make coverage` | pytest / coverage (fails under 85%) |
 | `make run SCENARIO=<name>` | run a diagnosis end-to-end (needs ANTHROPIC_API_KEY) |
 | `make evals` | run the evaluation harness |
+
+Run a single test: `uv run pytest tests/test_<module>.py::test_function_name -v`
+
+First-time setup: `cp .env.example .env` and add `ANTHROPIC_API_KEY`.
 
 Always run Python through `uv run` — never the system interpreter.
 
@@ -43,6 +51,21 @@ Always run Python through `uv run` — never the system interpreter.
 - Minimum per feature: one nominal test + one error/edge case.
 - No network in tests: the LLM provider and MCP clients are always mocked or faked. Scenario JSON files are the test fixtures.
 - Coverage gate: 85% (enforced by `make coverage` and CI).
+
+## Planned module layout (src/incident_copilot/)
+
+| Module | Purpose |
+|---|---|
+| `config.py` | `Settings` via pydantic-settings; all env vars |
+| `cli.py` | Typer entry point; catches domain errors, renders with rich |
+| `agents/` | LangGraph graph, supervisor, specialist nodes, shared state |
+| `llm/` | `LLMProvider` protocol + Anthropic/Bedrock/Vertex impls + factory |
+| `mcp_servers/` | `k8s_mock.py`, `prometheus_mock.py`, runbook tools; MCP client helper |
+| `guardrails/` | `circuit_breaker.py`, `tool_validator.py`, `sanitizer.py` |
+| `context/` | Sliding window, semantic summarizer, token-efficient pruning |
+| `memory/` | SQLite store for resolved incidents and user preferences |
+| `evals/` | Replay harness, trajectory metrics, markdown/JSON report |
+| `scenarios/` | JSON scenario files — single source of truth for MCP data and eval gold |
 
 ## Architecture rules
 

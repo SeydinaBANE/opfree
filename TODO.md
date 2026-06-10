@@ -17,13 +17,13 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] docs/: architecture.md, agents.md, guardrails.md, evals.md, runbook.md
 
 ## Step 3 — Config + LLM provider abstraction
-- [ ] `config.py`: `Settings` (pydantic-settings) — provider, model, budgets, log level
-- [ ] `llm/base.py`: `LLMProvider` protocol (complete + tool-use methods, typed messages)
-- [ ] `llm/anthropic_provider.py`: working implementation (SDK, retries, token accounting)
-- [ ] `llm/bedrock_provider.py` + `llm/vertex_provider.py`: documented stubs
-- [ ] `llm/factory.py`: provider selection from Settings
-- [ ] structlog setup module
-- [ ] Tests: settings parsing, factory selection, Anthropic provider with mocked SDK
+- [x] `config.py`: `Settings` (pydantic-settings) — provider, model, budgets, log level
+- [x] `llm/base.py`: `LLMProvider` protocol (complete + tool-use methods, typed messages)
+- [x] `llm/anthropic_provider.py`: working implementation (SDK, retries, token accounting)
+- [x] `llm/bedrock_provider.py` + `llm/vertex_provider.py`: documented stubs
+- [x] `llm/factory.py`: provider selection from Settings
+- [x] structlog setup module (`log.py`)
+- [x] Tests: settings parsing, factory selection, Anthropic provider with mocked SDK
 
 ## Step 4 — Scenarios + MCP mock servers
 - [ ] Scenario schema (pydantic): pods, logs, metrics, alerts, runbooks, gold trajectory
