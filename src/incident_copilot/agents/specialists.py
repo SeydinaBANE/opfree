@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 
 from incident_copilot.agents.state import Finding, GraphState, TrajectoryEntry
+from incident_copilot.context import pruning
 from incident_copilot.guardrails import tool_validator
 from incident_copilot.llm.base import (
     AssistantMessage,
@@ -101,6 +102,7 @@ async def _run_tool_loop(
             result = await client.call_tool(tc.name, tc.input)
             tool_results.append(ToolResultMessage(tool_call_id=tc.id, content=result))
         messages.extend(tool_results)
+        messages = pruning.prune(messages, llm)
 
     findings: list[Finding] = []
     if last_response_content:

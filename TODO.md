@@ -50,12 +50,12 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] Tests: breaker trips, hallucinated tool rejected then corrected, sanitizer cases
 
 ## Step 7 — Context management + memory
-- [ ] `context/window.py`: sliding window over graph history
-- [ ] `context/summarizer.py`: semantic summarization of evicted turns
-- [ ] `context/pruning.py`: token-efficient pruning
-- [ ] `memory/store.py`: SQLite store — resolved incidents, user preferences
-- [ ] Supervisor consults memory at diagnosis start; writes back on resolution
-- [ ] Tests: window eviction, summarizer with mocked LLM, store round-trips
+- [x] `context/window.py`: sliding window over graph history
+- [x] `context/summarizer.py`: semantic summarization of evicted turns
+- [x] `context/pruning.py`: token-efficient pruning
+- [x] `memory/store.py`: SQLite store — resolved incidents, user preferences
+- [x] Supervisor consults memory at diagnosis start; writes back on resolution
+- [x] Tests: window eviction, summarizer with mocked LLM, store round-trips
 
 ## Step 8 — Agentic evaluation harness
 - [ ] `evals/harness.py`: replay scenarios N times, capture trajectories

@@ -79,8 +79,10 @@ Always run Python through `uv run` — never the system interpreter.
 | `guardrails/circuit_breaker.py` | done | `check` + `BreakerTrip`; max iterations / token budget / timeout / repeated-route detection |
 | `guardrails/tool_validator.py` | done | `validate`; hallucinated-tool and missing-arg rejection with LLM-readable error feedback |
 | `guardrails/sanitizer.py` | done | `sanitize_text` (secrets + injection); `validate_synthesis` (output contract check) |
-| `context/` | planned | Sliding window, semantic summarizer, token-efficient pruning |
-| `memory/` | planned | SQLite store for resolved incidents and user preferences |
+| `context/window.py` | done | `evict` — keeps head + tail, evicts middle messages |
+| `context/summarizer.py` | done | `summarize` — LLM call compressing evicted messages into one `UserMessage` |
+| `context/pruning.py` | done | `prune` — combines window eviction + summarizer; called after each tool-call round |
+| `memory/store.py` | done | `MemoryStore` (SQLite) — `save_incident`, `find_similar`, `get/set_preference` |
 | `evals/` | planned | Replay harness, trajectory metrics, markdown/JSON report |
 
 Scenario JSON files live in `scenarios/` (three built-in: `crashloop`, `oom`, `latency_spike`).

@@ -26,4 +26,6 @@ class Settings(BaseSettings):
     max_total_tokens: int = 200_000
     agent_timeout_seconds: int = 300
 
+    memory_db_path: str = "incidents.db"
+
     log_level: str = "INFO"

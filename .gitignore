@@ -28,3 +28,6 @@ coverage.xml
 # Project artifacts
 *.sqlite3
 reports/
+#md
+PROJECT.md
+TODO.md

@@ -8,6 +8,7 @@ from incident_copilot.agents.state import GraphState, TrajectoryEntry
 from incident_copilot.config import Settings
 from incident_copilot.guardrails import circuit_breaker
 from incident_copilot.llm.base import LLMProvider, UserMessage
+from incident_copilot.memory.store import IncidentRecord, MemoryStore
 
 log = structlog.get_logger()
 
@@ -43,9 +44,21 @@ def _parse_routing(text: str) -> str:
     return "synthesize"
 
 
-def _build_prompt(state: GraphState) -> str:
+def _prior_context(store: MemoryStore, state: GraphState) -> str:
+    past: list[IncidentRecord] = store.find_similar(state["scenario"].name, limit=2)
+    if not past:
+        return ""
+    lines = ["Past diagnoses for similar incidents:"]
+    for record in past:
+        lines.append(f"- {record.diagnosis[:150]}")
+    return "\n".join(lines)
+
+
+def _build_prompt(state: GraphState, prior: str = "") -> str:
     consulted = _agents_consulted(state)
     lines = [f"Incident: {state['scenario'].description}"]
+    if prior:
+        lines.append(prior)
     if consulted:
         lines.append(f"Already consulted: {', '.join(sorted(consulted))}")
         lines.append(f"Findings collected: {len(state['findings'])}")
@@ -58,6 +71,7 @@ def _build_prompt(state: GraphState) -> str:
 def make_supervisor_node(
     llm: LLMProvider,
     settings: Settings | None = None,
+    store: MemoryStore | None = None,
 ) -> Callable[[GraphState], dict[str, object]]:
     _settings = settings if settings is not None else Settings()
 
@@ -72,8 +86,10 @@ def make_supervisor_node(
                 "trajectory": [circuit_breaker.make_trip_entry(step, trip)],
             }
 
+        prior = _prior_context(store, state) if store is not None and step == 0 else ""
+
         response = llm.complete(
-            messages=[UserMessage(content=_build_prompt(state))],
+            messages=[UserMessage(content=_build_prompt(state, prior))],
             system=SUPERVISOR_SYSTEM,
             max_tokens=64,
         )
