@@ -1,0 +1,121 @@
+{
+  "name": "latency_spike",
+  "description": "API gateway p99 latency spike caused by slow database queries after a missing index",
+  "pods": [
+    {
+      "name": "api-gateway-9f2d1a-rvk3s",
+      "namespace": "production",
+      "status": "Running",
+      "restart_count": 0,
+      "labels": {"app": "api-gateway", "version": "3.1.2"},
+      "containers": [
+        {"name": "api-gateway", "image": "api-gateway:3.1.2", "ready": true}
+      ]
+    },
+    {
+      "name": "postgres-primary-0",
+      "namespace": "data",
+      "status": "Running",
+      "restart_count": 0,
+      "labels": {"app": "postgres", "role": "primary"},
+      "containers": [
+        {"name": "postgres", "image": "postgres:15.3", "ready": true}
+      ]
+    }
+  ],
+  "logs": {
+    "api-gateway-9f2d1a-rvk3s": [
+      "2024-01-17T14:00:00Z INFO api-gateway v3.1.2 started",
+      "2024-01-17T14:00:00Z INFO Listening on :8080",
+      "2024-01-17T14:30:00Z INFO Received deployment event: postgres migration applied (add_order_status_idx dropped)",
+      "2024-01-17T14:30:05Z WARN Slow query detected: SELECT * FROM orders WHERE status='pending' took 2340ms (threshold: 500ms)",
+      "2024-01-17T14:30:07Z WARN Slow query detected: SELECT * FROM orders WHERE status='pending' took 2510ms",
+      "2024-01-17T14:30:09Z WARN Slow query detected: SELECT * FROM orders WHERE status='pending' took 2890ms",
+      "2024-01-17T14:31:00Z WARN Request timeout: GET /api/v1/orders?status=pending (client: 10.0.1.42)",
+      "2024-01-17T14:32:00Z WARN Request timeout: GET /api/v1/orders?status=pending (client: 10.0.2.18)",
+      "2024-01-17T14:33:00Z ERROR Circuit breaker OPEN for orders service after 10 consecutive timeouts",
+      "2024-01-17T14:35:00Z WARN Slow query detected: SELECT * FROM orders WHERE status='pending' took 3120ms"
+    ]
+  },
+  "events": [
+    {
+      "kind": "Deployment",
+      "name": "api-gateway",
+      "namespace": "production",
+      "reason": "ScalingReplicaSet",
+      "message": "Scaled up replica set api-gateway-9f2d1a to 1",
+      "count": 1
+    }
+  ],
+  "metrics": {
+    "http_request_duration_seconds_p99": [
+      {"timestamp": "2024-01-17T14:00:00Z", "value": 0.12},
+      {"timestamp": "2024-01-17T14:15:00Z", "value": 0.15},
+      {"timestamp": "2024-01-17T14:30:00Z", "value": 0.18},
+      {"timestamp": "2024-01-17T14:30:30Z", "value": 2.8},
+      {"timestamp": "2024-01-17T14:31:00Z", "value": 3.2},
+      {"timestamp": "2024-01-17T14:32:00Z", "value": 4.1},
+      {"timestamp": "2024-01-17T14:35:00Z", "value": 5.3}
+    ],
+    "http_requests_total_errors": [
+      {"timestamp": "2024-01-17T14:30:00Z", "value": 0.0},
+      {"timestamp": "2024-01-17T14:31:00Z", "value": 12.0},
+      {"timestamp": "2024-01-17T14:35:00Z", "value": 87.0}
+    ],
+    "postgres_query_duration_seconds_p99": [
+      {"timestamp": "2024-01-17T14:29:00Z", "value": 0.05},
+      {"timestamp": "2024-01-17T14:30:00Z", "value": 2.3},
+      {"timestamp": "2024-01-17T14:35:00Z", "value": 3.1}
+    ]
+  },
+  "alerts": [
+    {
+      "name": "APIHighLatency",
+      "severity": "critical",
+      "labels": {
+        "service": "api-gateway",
+        "namespace": "production",
+        "quantile": "0.99"
+      },
+      "annotations": {
+        "summary": "API p99 latency above threshold",
+        "description": "api-gateway p99 latency is 5.3s, exceeding the 1s SLO threshold"
+      }
+    },
+    {
+      "name": "HighErrorRate",
+      "severity": "warning",
+      "labels": {
+        "service": "api-gateway",
+        "namespace": "production"
+      },
+      "annotations": {
+        "summary": "Elevated error rate on api-gateway",
+        "description": "Error rate 8.7%, SLO threshold is 1%"
+      }
+    }
+  ],
+  "runbooks": [
+    {
+      "name": "api-latency-spike-slow-query",
+      "trigger": "APIHighLatency",
+      "root_cause": "Missing database index causing full table scans on high-traffic queries",
+      "steps": [
+        {"action": "identify_slow_queries", "description": "Check application logs for 'Slow query' patterns and record the query text"},
+        {"action": "check_query_plan", "description": "Run EXPLAIN ANALYZE <slow_query> in the database to confirm sequential scan"},
+        {"action": "add_missing_index", "description": "CREATE INDEX CONCURRENTLY idx_orders_status ON orders(status); (non-blocking)"},
+        {"action": "verify_index_usage", "description": "Re-run EXPLAIN ANALYZE to confirm index scan is now used"},
+        {"action": "monitor_latency", "description": "Watch http_request_duration_seconds_p99 — should drop within 2 minutes of index creation"}
+      ]
+    }
+  ],
+  "gold_trajectory": [
+    {"agent": "metrics_analyst", "tool": "get_alerts", "args": {}},
+    {"agent": "metrics_analyst", "tool": "query_range", "args": {"metric": "http_request_duration_seconds_p99"}},
+    {"agent": "metrics_analyst", "tool": "query_range", "args": {"metric": "postgres_query_duration_seconds_p99"}},
+    {"agent": "log_analyst", "tool": "list_pods", "args": {"namespace": "production"}},
+    {"agent": "log_analyst", "tool": "get_pod_logs", "args": {"pod_name": "api-gateway-9f2d1a-rvk3s"}},
+    {"agent": "runbook_executor", "tool": "get_runbook", "args": {"trigger": "APIHighLatency"}},
+    {"agent": "runbook_executor", "tool": "list_runbook_steps", "args": {"runbook_name": "api-latency-spike-slow-query"}}
+  ]
+}
