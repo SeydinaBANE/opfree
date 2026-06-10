@@ -58,11 +58,11 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] Tests: window eviction, summarizer with mocked LLM, store round-trips
 
 ## Step 8 — Agentic evaluation harness
-- [ ] `evals/harness.py`: replay scenarios N times, capture trajectories
-- [ ] `evals/metrics.py`: tool-call accuracy vs gold, trajectory consistency, loop detection
-- [ ] `evals/report.py`: markdown + JSON report
-- [ ] `evals` CLI command wired (`make evals`)
-- [ ] Tests: metrics on synthetic trajectories, report rendering
+- [x] `evals/harness.py`: replay scenarios N times, capture trajectories
+- [x] `evals/metrics.py`: tool-call accuracy vs gold, trajectory consistency, loop detection
+- [x] `evals/report.py`: markdown + JSON report
+- [x] `evals` CLI command wired (`make evals`)
+- [x] Tests: metrics on synthetic trajectories, report rendering
 
 ## Step 9 — Polish & release
 - [ ] `diagnose` CLI: rich live trajectory display, final diagnosis panel
