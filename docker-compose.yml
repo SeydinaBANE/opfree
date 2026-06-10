@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: incident-copilot:latest
+    env_file:
+      - .env
+    command: ["diagnose", "--scenario", "crashloop"]
+    healthcheck:
+      test: ["CMD", "incident-copilot", "--help"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
