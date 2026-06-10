@@ -26,20 +26,21 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] Tests: settings parsing, factory selection, Anthropic provider with mocked SDK
 
 ## Step 4 — Scenarios + MCP mock servers
-- [ ] Scenario schema (pydantic): pods, logs, metrics, alerts, runbooks, gold trajectory
-- [ ] `scenarios/crashloop.json`, `scenarios/oom.json`, `scenarios/latency_spike.json`
-- [ ] `mcp_servers/k8s_mock.py`: list_pods, describe_pod, get_pod_logs, get_events
-- [ ] `mcp_servers/prometheus_mock.py`: query_range, get_alerts, get_targets
-- [ ] MCP client helper for agents (connect, list tools, call tool)
-- [ ] Tests: tool outputs per scenario, schema validation, unknown-tool errors
+- [x] Scenario schema (pydantic): pods, logs, metrics, alerts, runbooks, gold trajectory
+- [x] `scenarios/crashloop.json`, `scenarios/oom.json`, `scenarios/latency_spike.json`
+- [x] `mcp_servers/k8s_mock.py`: list_pods, describe_pod, get_pod_logs, get_events
+- [x] `mcp_servers/prometheus_mock.py`: query_range, get_alerts, get_targets
+- [x] `mcp_servers/runbook_mock.py`: get_runbook, list_runbooks, list_runbook_steps
+- [x] MCP client helper for agents (connect, list tools, call tool)
+- [x] Tests: tool outputs per scenario, schema validation, unknown-tool errors
 
 ## Step 5 — Multi-agent LangGraph
-- [ ] Typed shared state (findings, trajectory, token usage, iteration count)
-- [ ] Supervisor node: routing logic (which specialist next, or synthesize)
-- [ ] Specialist agents: log_analyst, metrics_analyst, runbook_executor (MCP tool loops)
-- [ ] Synthesis node: diagnosis + remediation proposal
-- [ ] Checkpointing for long-running tasks
-- [ ] Tests: routing decisions, each agent with mocked LLM + fake MCP, full graph run on crashloop with scripted LLM
+- [x] Typed shared state (findings, trajectory, token usage, iteration count)
+- [x] Supervisor node: routing logic (which specialist next, or synthesize)
+- [x] Specialist agents: log_analyst, metrics_analyst, runbook_executor (MCP tool loops)
+- [x] Synthesis node: diagnosis + remediation proposal
+- [x] Checkpointing for long-running tasks
+- [x] Tests: routing decisions, each agent with mocked LLM + fake MCP, full graph run on crashloop with scripted LLM
 
 ## Step 6 — Guardrails
 - [ ] `circuit_breaker.py`: max iterations, token budget, wall-clock timeout, trip reporting

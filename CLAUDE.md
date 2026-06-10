@@ -29,13 +29,15 @@ Multi-agent SRE incident diagnosis copilot. A LangGraph supervisor orchestrates 
 
 Run a single test: `uv run pytest tests/test_<module>.py::test_function_name -v`
 
+Run a mock MCP server standalone (useful for debugging): `uv run python -m incident_copilot.mcp_servers.k8s_mock --scenario crashloop`
+
 First-time setup: `cp .env.example .env` and add `ANTHROPIC_API_KEY`.
 
 Always run Python through `uv run` — never the system interpreter.
 
 ## Code conventions
 
-- Python 3.12, src layout, package `incident_copilot`.
+- Python 3.12, src layout, package `incident_copilot`. Ruff line-length is **100** (not 88).
 - Strict typing everywhere: all parameters and return values annotated; no `Any`, no bare `dict`/`list`, no `# type: ignore` without a documented reason.
 - No comments in code — code must be self-documenting. Docstrings only where they add real information.
 - One function = one responsibility, max ~30 lines.
@@ -46,26 +48,40 @@ Always run Python through `uv run` — never the system interpreter.
 
 ## Testing conventions
 
-- pytest, files mirror `src/` layout (`tests/test_<module>.py`).
-- Names: `test_<function>_<case>`.
+- pytest with `asyncio_mode = "auto"` — tests may be `async def` without extra decoration.
+- Files mirror `src/` layout (`tests/test_<module>.py`). Names: `test_<function>_<case>`.
 - Minimum per feature: one nominal test + one error/edge case.
 - No network in tests: the LLM provider and MCP clients are always mocked or faked. Scenario JSON files are the test fixtures.
 - Coverage gate: 85% (enforced by `make coverage` and CI).
 
-## Planned module layout (src/incident_copilot/)
+## Module layout (src/incident_copilot/)
 
-| Module | Purpose |
-|---|---|
-| `config.py` | `Settings` via pydantic-settings; all env vars |
-| `cli.py` | Typer entry point; catches domain errors, renders with rich |
-| `agents/` | LangGraph graph, supervisor, specialist nodes, shared state |
-| `llm/` | `LLMProvider` protocol + Anthropic/Bedrock/Vertex impls + factory |
-| `mcp_servers/` | `k8s_mock.py`, `prometheus_mock.py`, runbook tools; MCP client helper |
-| `guardrails/` | `circuit_breaker.py`, `tool_validator.py`, `sanitizer.py` |
-| `context/` | Sliding window, semantic summarizer, token-efficient pruning |
-| `memory/` | SQLite store for resolved incidents and user preferences |
-| `evals/` | Replay harness, trajectory metrics, markdown/JSON report |
-| `scenarios/` | JSON scenario files — single source of truth for MCP data and eval gold |
+| Module | Status | Purpose |
+|---|---|---|
+| `config.py` | done | `Settings` via pydantic-settings; all env vars |
+| `log.py` | done | structlog bootstrap called once at startup |
+| `cli.py` | done | Typer entry point; catches domain errors, renders with rich |
+| `scenarios.py` | done | Pydantic schema for scenario JSON; `Scenario.load(path)` |
+| `llm/base.py` | done | `LLMProvider` protocol, typed `Message`, `LLMResponse`, `ToolDefinition` |
+| `llm/anthropic_provider.py` | done | Working Anthropic SDK impl with retries and token accounting |
+| `llm/bedrock_provider.py` | stub | Documented stub — raises `NotImplementedError` |
+| `llm/vertex_provider.py` | stub | Documented stub — raises `NotImplementedError` |
+| `llm/factory.py` | done | Selects provider from `Settings.llm_provider` |
+| `mcp_servers/k8s_mock.py` | done | FastMCP server: `list_pods`, `describe_pod`, `get_pod_logs`, `get_events` |
+| `mcp_servers/prometheus_mock.py` | done | FastMCP server: `query_range`, `get_alerts`, `get_targets` |
+| `mcp_servers/runbook_mock.py` | done | FastMCP server: runbook retrieval and execution steps |
+| `mcp_servers/client.py` | done | `MCPClient` wrapper + `connect_to_server` async context manager |
+| `agents/state.py` | done | `GraphState`, `Finding`, `TrajectoryEntry` TypedDicts; reducer annotations |
+| `agents/supervisor.py` | done | `make_supervisor_node` + `route_supervisor` conditional edge function |
+| `agents/specialists.py` | done | `make_log_analyst_node`, `make_metrics_analyst_node`, `make_runbook_executor_node` |
+| `agents/synthesis.py` | done | `make_synthesis_node` — aggregates findings into ROOT CAUSE / REMEDIATION / CONFIDENCE |
+| `agents/graph.py` | done | `build_graph` — wires the LangGraph `StateGraph` with `MemorySaver` checkpointing |
+| `guardrails/` | planned | `circuit_breaker.py`, `tool_validator.py`, `sanitizer.py` |
+| `context/` | planned | Sliding window, semantic summarizer, token-efficient pruning |
+| `memory/` | planned | SQLite store for resolved incidents and user preferences |
+| `evals/` | planned | Replay harness, trajectory metrics, markdown/JSON report |
+
+Scenario JSON files live in `scenarios/` (three built-in: `crashloop`, `oom`, `latency_spike`).
 
 ## Architecture rules
 
