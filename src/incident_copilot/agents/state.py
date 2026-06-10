@@ -30,3 +30,4 @@ class GraphState(TypedDict):
     iteration_count: Annotated[int, operator.add]
     next_agent: str
     diagnosis: str | None
+    start_time: float

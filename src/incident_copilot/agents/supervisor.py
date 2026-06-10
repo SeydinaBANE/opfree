@@ -2,8 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import structlog
+
 from incident_copilot.agents.state import GraphState, TrajectoryEntry
+from incident_copilot.config import Settings
+from incident_copilot.guardrails import circuit_breaker
 from incident_copilot.llm.base import LLMProvider, UserMessage
+
+log = structlog.get_logger()
 
 SUPERVISOR_SYSTEM = """\
 You are the supervisor of a multi-agent SRE incident diagnosis system.
@@ -49,15 +55,29 @@ def _build_prompt(state: GraphState) -> str:
     return "\n".join(lines)
 
 
-def make_supervisor_node(llm: LLMProvider) -> Callable[[GraphState], dict[str, object]]:
+def make_supervisor_node(
+    llm: LLMProvider,
+    settings: Settings | None = None,
+) -> Callable[[GraphState], dict[str, object]]:
+    _settings = settings if settings is not None else Settings()
+
     def node(state: GraphState) -> dict[str, object]:
+        step = len(state["trajectory"])
+
+        trip = circuit_breaker.check(state, _settings)
+        if trip is not None:
+            log.warning("circuit_breaker_trip", reason=trip.reason, detail=trip.detail)
+            return {
+                "next_agent": "synthesize",
+                "trajectory": [circuit_breaker.make_trip_entry(step, trip)],
+            }
+
         response = llm.complete(
             messages=[UserMessage(content=_build_prompt(state))],
             system=SUPERVISOR_SYSTEM,
             max_tokens=64,
         )
         next_agent = _parse_routing(response.content or "")
-        step = len(state["trajectory"])
         return {
             "next_agent": next_agent,
             "input_tokens": response.usage.input_tokens,

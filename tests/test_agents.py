@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -107,6 +108,7 @@ def _empty_state(scenario: Scenario) -> GraphState:
         iteration_count=0,
         next_agent="",
         diagnosis=None,
+        start_time=time.monotonic(),
     )
 
 

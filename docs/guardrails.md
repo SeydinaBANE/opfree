@@ -4,7 +4,7 @@ Production safety measures wrapping every agent loop and tool call. Design goal:
 
 ## Circuit breaker (`guardrails/circuit_breaker.py`)
 
-Bounds every form of runaway:
+Bounds every form of runaway. Checked in the supervisor node **before** every routing decision; trips short-circuit to synthesis with whatever evidence exists.
 
 | Limit | Setting | Default |
 |---|---|---|
@@ -12,27 +12,46 @@ Bounds every form of runaway:
 | Total tokens | `MAX_TOTAL_TOKENS` | 200 000 |
 | Wall-clock time | `AGENT_TIMEOUT_SECONDS` | 300 |
 
-On trip: the graph short-circuits to synthesis with whatever evidence exists, the trajectory records the trip reason, and the CLI reports a degraded (but honest) diagnosis. A trip is never an exception that loses state.
+`check(state, settings) -> BreakerTrip | None` — evaluates all four conditions in priority order:
 
-Loop detection: if the supervisor issues the same routing decision with identical findings hash N times in a row, the breaker trips early (`repeated_route` reason) — this is the classic "agent stuck in an infinite loop" scar the offer mentions.
+1. **max_iterations** — `iteration_count >= max_agent_iterations`
+2. **token_budget** — `input_tokens + output_tokens >= max_total_tokens`
+3. **timeout** — `time.monotonic() - state["start_time"] >= agent_timeout_seconds`
+4. **repeated_route** — last 3 supervisor routing decisions are identical (stuck loop)
+
+On trip: the supervisor node returns `next_agent="synthesize"` plus a `circuit_breaker / trip` trajectory entry; the LLM is never called. The wall-clock start time is stored in `GraphState.start_time` (set once when the initial state is constructed).
+
+`make_trip_entry(step, trip) -> TrajectoryEntry` formats the trip reason and detail for the eval harness.
 
 ## Tool-call validator (`guardrails/tool_validator.py`)
 
-Every tool call an agent emits is checked **against the live MCP server schemas** before execution:
+`validate(tool_call, available_tools) -> str | None` — called for every tool call inside `_run_tool_loop` **before** `client.call_tool()`:
 
-1. Tool name must exist on the connected server — otherwise it is a *hallucinated tool*.
-2. Arguments must validate against the tool's JSON schema — otherwise *hallucinated arguments*.
+1. **Hallucinated tool** — name not in the available tool list → returns an error string listing available tools.
+2. **Missing required args** — arguments don't satisfy the tool schema's `required` array → returns an error string listing missing fields.
 
-Rejected calls are not silently dropped: the validator returns a structured error message into the agent's tool-result slot ("tool `get_pod` does not exist; available: …") so the model can self-correct on the next turn. Repeated hallucinations count toward the circuit breaker.
+Rejected calls are not silently dropped: the error string is injected as the `ToolResultMessage` so the model can self-correct on the next turn. The trajectory records a `validation_error` action for the eval harness.
 
 ## Output sanitizer (`guardrails/sanitizer.py`)
 
-Applied to specialist findings and the final synthesis:
+Applied to the final synthesis output by `make_synthesis_node`.
 
-- strips anything matching secret patterns (keys, tokens, connection strings) coming back from logs,
-- neutralizes prompt-injection echoes found in scenario data (instructions embedded in log lines are rendered inert),
-- enforces the structured output contract — non-conforming output is rejected and retried once, then surfaced as a guardrail failure.
+`sanitize_text(text) -> tuple[str, list[str]]`:
+- Strips secret patterns: AWS access keys (`AKIA…`), `sk-*` API keys, connection strings (`postgresql://…`, etc.), auth headers, password values.
+- Neutralises prompt-injection echoes: "ignore previous instructions", role-change directives (`you are now a…`), role tags (`<system>`, `<user>`, `<assistant>`).
+- Returns (sanitised text, list of hit labels) for logging and trajectory recording.
+
+`validate_synthesis(text) -> list[str]`:
+- Checks the structured output contract: `ROOT CAUSE:`, `EVIDENCE:`, `REMEDIATION:`, `CONFIDENCE:` must all be present.
+- Returns list of missing field names. Logged as `incomplete_synthesis` trajectory entry.
 
 ## Observability
 
-Every guardrail decision (validation failure, breaker tick, trip, sanitization hit) is logged via structlog with the incident id, and recorded in the trajectory so the eval harness can score guardrail behavior, not just happy paths.
+Every guardrail decision is logged via structlog and recorded as a trajectory entry:
+
+| Entry agent | Entry action | Trigger |
+|---|---|---|
+| `circuit_breaker` | `trip` | Breaker fires; includes reason and detail |
+| `<specialist>` | `validation_error` | Tool call rejected; detail = tool name |
+| `sanitizer` | `sanitized` | Secret or injection hit; detail = hit labels |
+| `sanitizer` | `incomplete_synthesis` | Missing synthesis fields; detail = field list |

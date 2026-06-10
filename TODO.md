@@ -43,11 +43,11 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] Tests: routing decisions, each agent with mocked LLM + fake MCP, full graph run on crashloop with scripted LLM
 
 ## Step 6 — Guardrails
-- [ ] `circuit_breaker.py`: max iterations, token budget, wall-clock timeout, trip reporting
-- [ ] `tool_validator.py`: validate calls against live MCP schemas, reject + feed back hallucinated tools/args
-- [ ] `sanitizer.py`: output sanitization (secrets, prompt-injection echoes)
-- [ ] Wire into the graph (every agent loop, every tool call)
-- [ ] Tests: breaker trips, hallucinated tool rejected then corrected, sanitizer cases
+- [x] `circuit_breaker.py`: max iterations, token budget, wall-clock timeout, trip reporting
+- [x] `tool_validator.py`: validate calls against live MCP schemas, reject + feed back hallucinated tools/args
+- [x] `sanitizer.py`: output sanitization (secrets, prompt-injection echoes)
+- [x] Wire into the graph (every agent loop, every tool call)
+- [x] Tests: breaker trips, hallucinated tool rejected then corrected, sanitizer cases
 
 ## Step 7 — Context management + memory
 - [ ] `context/window.py`: sliding window over graph history

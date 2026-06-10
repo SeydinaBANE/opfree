@@ -76,7 +76,9 @@ Always run Python through `uv run` — never the system interpreter.
 | `agents/specialists.py` | done | `make_log_analyst_node`, `make_metrics_analyst_node`, `make_runbook_executor_node` |
 | `agents/synthesis.py` | done | `make_synthesis_node` — aggregates findings into ROOT CAUSE / REMEDIATION / CONFIDENCE |
 | `agents/graph.py` | done | `build_graph` — wires the LangGraph `StateGraph` with `MemorySaver` checkpointing |
-| `guardrails/` | planned | `circuit_breaker.py`, `tool_validator.py`, `sanitizer.py` |
+| `guardrails/circuit_breaker.py` | done | `check` + `BreakerTrip`; max iterations / token budget / timeout / repeated-route detection |
+| `guardrails/tool_validator.py` | done | `validate`; hallucinated-tool and missing-arg rejection with LLM-readable error feedback |
+| `guardrails/sanitizer.py` | done | `sanitize_text` (secrets + injection); `validate_synthesis` (output contract check) |
 | `context/` | planned | Sliding window, semantic summarizer, token-efficient pruning |
 | `memory/` | planned | SQLite store for resolved incidents and user preferences |
 | `evals/` | planned | Replay harness, trajectory metrics, markdown/JSON report |

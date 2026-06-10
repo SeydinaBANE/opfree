@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 
 from incident_copilot.agents.state import Finding, GraphState, TrajectoryEntry
+from incident_copilot.guardrails import tool_validator
 from incident_copilot.llm.base import (
     AssistantMessage,
     LLMProvider,
@@ -75,6 +76,19 @@ async def _run_tool_loop(
         messages.append(AssistantMessage(content=response.content, tool_calls=response.tool_calls))
         tool_results: list[Message] = []
         for tc in response.tool_calls:
+            error = tool_validator.validate(tc, tools)
+            if error is not None:
+                trajectory.append(
+                    TrajectoryEntry(
+                        step=base_step + len(trajectory),
+                        agent=agent_name,
+                        action="validation_error",
+                        detail=tc.name,
+                    )
+                )
+                tool_results.append(ToolResultMessage(tool_call_id=tc.id, content=error))
+                continue
+
             trajectory.append(
                 TrajectoryEntry(
                     step=base_step + len(trajectory),
