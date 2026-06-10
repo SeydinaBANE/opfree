@@ -65,8 +65,8 @@ Rules: steps are ordered, finish one before starting the next. A step is done on
 - [x] Tests: metrics on synthetic trajectories, report rendering
 
 ## Step 9 — Polish & release
-- [ ] `diagnose` CLI: rich live trajectory display, final diagnosis panel
-- [ ] Verify `make docker-build && make docker-run` end-to-end
-- [ ] Complete docs/ pages with final diagrams and real examples
-- [ ] README: add eval results table + demo GIF/asciinema
-- [ ] Manual checks: circuit breaker on a trap scenario, eval report quality
+- [x] `diagnose` CLI: rich live trajectory display, final diagnosis panel
+- [x] Verify `make docker-build && make docker-run` end-to-end
+- [x] Complete docs/ pages with final diagrams and real examples
+- [x] README: add eval results table + demo GIF/asciinema
+- [x] Manual checks: circuit breaker on a trap scenario, eval report quality

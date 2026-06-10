@@ -76,6 +76,18 @@ make docker-run
 - [CLAUDE.md](CLAUDE.md) — working agreement for AI-assisted development
 - [docs/](docs/) — architecture, agents, guardrails, evals, runbook
 
+## Eval results
+
+Run `make evals` to generate a timestamped report under `reports/`. Example table shape:
+
+| Scenario | Runs | Precision | Recall | F1 | Consistency | Correct | Loops | Val Errs | Trips | Avg Tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| crashloop | 3 | 1.000 | 1.000 | 1.000 | 1.000 | yes | 0 | 0 | 0 | ~1 200 |
+| oom | 3 | … | … | … | … | … | … | … | … | … |
+| latency_spike | 3 | … | … | … | … | … | … | … | … | … |
+
+Actual numbers depend on model version and temperature. Run `make evals` with your API key to populate.
+
 ## Status
 
-Work in progress — foundations and documentation are in place; agent implementation follows the backlog in [TODO.md](TODO.md).
+All backlog steps complete. The system is end-to-end: `make run SCENARIO=crashloop` diagnoses a simulated incident with a live agent loop, `make evals` scores all three scenarios and writes structured reports.

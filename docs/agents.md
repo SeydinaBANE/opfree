@@ -29,7 +29,16 @@ supervisor
     └── synthesize       → END
 ```
 
-Built with `StateGraph(GraphState)` compiled with `MemorySaver` checkpointing. `build_graph(llm, *, k8s_client, prom_client, runbook_client)` accepts optional pre-built `MCPClient` instances for tests; when `None`, each specialist spawns its MCP server as a subprocess.
+Built with `StateGraph(GraphState)` compiled with `MemorySaver` checkpointing. `build_graph(llm, *, settings, store, k8s_client, prom_client, runbook_client)` accepts optional pre-built `MCPClient` instances for tests; when `None`, each specialist spawns its MCP server as a subprocess. A `persist` node sits after synthesis and writes the resolved incident to `MemoryStore`.
+
+Actual topology:
+
+```
+supervisor → log_analyst      → supervisor
+supervisor → metrics_analyst  → supervisor
+supervisor → runbook_executor → supervisor
+supervisor → synthesis        → persist → END
+```
 
 ## Supervisor (`agents/supervisor.py`)
 

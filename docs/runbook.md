@@ -43,7 +43,6 @@ All settings come from `.env` (see `.env.example`). Key variables:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `NotImplementedError` from CLI | feature not yet built | check TODO.md — steps land in order |
 | Diagnosis ends with `circuit_breaker: repeated_route` | model stuck re-routing | inspect trajectory; usually a prompt or scenario-data issue |
 | `hallucinated tool` entries in logs | model invented a tool | expected occasionally; validator feeds back and the model self-corrects. Frequent occurrences → check prompts list the right server |
 | Tests touching the network | a provider/MCP mock is missing | tests must never hit the network; fix the fixture |
