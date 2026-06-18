@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from rich.console import Console
@@ -162,3 +162,95 @@ def test_build_diagnosis_panel_none_shows_fallback() -> None:
     console.print(panel)
     output = console.file.getvalue()
     assert "No diagnosis" in output
+
+
+# ---------------------------------------------------------------------------
+# CLI diagnose command
+# ---------------------------------------------------------------------------
+
+
+def test_diagnose_missing_scenario_exits_with_error() -> None:
+    result = _runner.invoke(app, ["diagnose", "--scenario", "nonexistent"])
+    assert result.exit_code == 1
+    assert "Scenario not found" in result.output
+
+
+def test_diagnose_llm_error_exits_gracefully() -> None:
+    mock_graph = MagicMock()
+    mock_graph.ainvoke = AsyncMock(side_effect=ValueError("LLM API error"))
+
+    with patch("incident_copilot.cli.build_graph", return_value=mock_graph):
+        result = _runner.invoke(app, ["diagnose", "--scenario", "crashloop"])
+
+    assert result.exit_code == 1
+    assert "Diagnosis failed" in result.output
+    assert "LLM API error" in result.output
+
+
+def test_diagnose_success_renders_output() -> None:
+    scenario = Scenario.load(SCENARIOS_DIR / "crashloop.json")
+    diagnosis = "ROOT CAUSE: test.\nEVIDENCE: test.\nREMEDIATION: test.\nCONFIDENCE: high"
+    fake = _fake_state(scenario, diagnosis=diagnosis)
+
+    mock_graph = AsyncMock()
+    mock_graph.ainvoke = AsyncMock(return_value=fake)
+
+    with patch("incident_copilot.cli.build_graph", return_value=mock_graph):
+        result = _runner.invoke(app, ["diagnose", "--scenario", "crashloop"])
+
+    assert result.exit_code == 0
+    assert "ROOT CAUSE" in result.output
+    assert "Trajectory" in result.output
+
+
+# ---------------------------------------------------------------------------
+# CLI evals command
+# ---------------------------------------------------------------------------
+
+
+def test_evals_no_scenarios_dir() -> None:
+    with patch("incident_copilot.cli.Path.exists", return_value=False):
+        result = _runner.invoke(app, ["evals", "--all"])
+
+    assert result.exit_code == 1
+    assert "scenarios/ directory not found" in result.output
+
+
+def test_evals_no_scenario_files() -> None:
+    mock_dir = MagicMock()
+    mock_dir.exists.return_value = True
+    mock_dir.glob.return_value = []
+
+    with patch("incident_copilot.cli.Path", return_value=mock_dir):
+        result = _runner.invoke(app, ["evals", "--all"])
+
+    assert result.exit_code == 1
+    assert "No scenario files found" in result.output
+
+
+def test_evals_success() -> None:
+    scenario = Scenario.load(SCENARIOS_DIR / "crashloop.json")
+
+    with (
+        patch("incident_copilot.cli.Scenario.load", return_value=scenario),
+        patch("incident_copilot.cli.run_all", new_callable=AsyncMock, return_value={"results": []}),
+        patch("incident_copilot.cli.write", return_value=("report.md", "report.json")),
+    ):
+        result = _runner.invoke(app, ["evals", "--all"])
+
+    assert result.exit_code == 0
+    assert "Reports written" in result.output
+
+
+def test_evals_error_exits_gracefully() -> None:
+    scenario = Scenario.load(SCENARIOS_DIR / "crashloop.json")
+
+    error = RuntimeError("Eval crashed")
+    with (
+        patch("incident_copilot.cli.Scenario.load", return_value=scenario),
+        patch("incident_copilot.cli.run_all", new_callable=AsyncMock, side_effect=error),
+    ):
+        result = _runner.invoke(app, ["evals", "--all"])
+
+    assert result.exit_code == 1
+    assert "Evals failed" in result.output

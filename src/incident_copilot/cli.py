@@ -18,6 +18,7 @@ from incident_copilot.config import Settings
 from incident_copilot.evals.harness import run_all
 from incident_copilot.evals.report import write
 from incident_copilot.llm.factory import make_provider
+from incident_copilot.log import configure_logging
 from incident_copilot.scenarios import Scenario
 
 app = typer.Typer(help="Multi-agent SRE incident diagnosis copilot.", no_args_is_help=True)
@@ -82,6 +83,7 @@ def _build_diagnosis_panel(diagnosis: str | None, scenario_name: str) -> Panel:
 @app.command()
 def diagnose(scenario: str = typer.Option(..., help="Incident scenario name.")) -> None:
     settings = Settings()
+    configure_logging(settings.log_level)
     with _console.status(
         f"[bold cyan]Diagnosing scenario '{scenario}'…[/bold cyan]", spinner="dots"
     ):
@@ -89,6 +91,9 @@ def diagnose(scenario: str = typer.Option(..., help="Incident scenario name.")) 
             state = asyncio.run(_run_diagnose(scenario, settings))
         except FileNotFoundError as exc:
             _console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1) from exc
+        except Exception as exc:
+            _console.print(f"[red]Diagnosis failed: {exc}[/red]")
             raise typer.Exit(1) from exc
 
     _console.print(_build_trajectory_table(state["trajectory"]))
@@ -102,6 +107,7 @@ def evals(
     n_runs: int = typer.Option(1, "--runs", help="Number of replays per scenario."),
 ) -> None:
     settings = Settings()
+    configure_logging(settings.log_level)
     scenarios_dir = Path("scenarios")
 
     if not scenarios_dir.exists():
@@ -120,6 +126,10 @@ def evals(
     llm = make_provider(settings)
     _console.print(f"Running evals: {len(scenarios)} scenario(s) x {n_runs} run(s)...")
 
-    results = asyncio.run(run_all(scenarios, llm, settings, n_runs=n_runs))
+    try:
+        results = asyncio.run(run_all(scenarios, llm, settings, n_runs=n_runs))
+    except Exception as exc:
+        _console.print(f"[red]Evals failed: {exc}[/red]")
+        raise typer.Exit(1) from exc
     md_path, json_path = write(results)
     _console.print(f"[green]Reports written:[/green] {md_path}  {json_path}")
